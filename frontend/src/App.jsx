@@ -1,65 +1,56 @@
-// frontend/src/App.jsx
+// src/App.jsx
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-//Provider
-import { CartProvider } from "./context/CartContext";
+import "./config.json";
 
-// Impor Layouts
-import PublicLayout from "./layouts/PublicLayout";
-import AdminLayout from "./layouts/AdminLayout";
+import LoginPage from './pages/LoginPage.jsx';
+import MainLayout from './layouts/MainLayout.jsx'; // 👈 Impor Layout Utama
+import DashboardPage from './pages/DashboardPage.jsx'; 
+//import MembersPage from './pages/MembersPage.jsx'; // Contoh komponen halaman
 
-// Impor Definisi Rute dari Modules
-import { publicRoutes } from "./modules/Public/routes";
-import { adminRoutes } from "./modules/Admin/routes";
-import PrivateRoute from "./modules/Auth/components/PrivateRoute";
+// Komponen Pembungkus untuk Route Terproteksi
+const PrivateRoute = ({ children }) => {
+  const { isLoggedIn } = useAuth();
+  // Jika tidak login, arahkan ke halaman login
+  return isLoggedIn ? children : <Navigate to="/login" />;
+};
 
-import Login from "./modules/Auth/pages/Login";
+const App = () => (
+    <Router>
+        <AuthProvider>
+            <Routes>
+                
+                {/* Rute Login tidak menggunakan Layout */}
+                <Route path="/login" element={<LoginPage />} />
+                
+                {/* 🎯 Rute Terproteksi Dibungkus dalam MainLayout */}
+                <Route
+                    path="/*" // Menggunakan rute wildcard atau base path untuk rute terproteksi
+                    element={
+                        <PrivateRoute>
+                            <MainLayout>
+                                <Routes>
+                                    {/* Masukkan rute yang hanya me-load konten di sini */}
+                                    <Route path="/dashboard" element={<DashboardPage />} />
+                                    
+                                    {/* Tambahkan rute untuk Simpanan, Pinjaman, dll. */}
 
-const NotFound = () => (
-  <div style={{ padding: "20px", textAlign: "center" }}>
-    <h1>404</h1>
-    <p>Halaman tidak ditemukan.</p>
-  </div>
+                                    {/* Redirect default ke Dashboard jika sudah login */}
+                                    <Route path="/" element={<Navigate to="/dashboard" />} />
+                                </Routes>
+                            </MainLayout>
+                        </PrivateRoute>
+                    }
+                />
+            </Routes>
+        </AuthProvider>
+    </Router>
 );
-
-function App() {
-  return (
-    <BrowserRouter>
-      <CartProvider>
-        <Routes>
-          {/* Rute Publik (E-commerce) */}
-          <Route path="/" element={<PublicLayout />}>
-            {publicRoutes}
-          </Route>
-
-          {/* Rute Admin (Akan berada di path /admin/*) */}
-          {/* Catatan: Kita gunakan Route tanpa path di sini dan definisikan path utama /admin di AdminRoutes.jsx */}
-          <Route
-            path="/admin"
-            element={
-              <PrivateRoute>
-                <AdminLayout />
-              </PrivateRoute>
-            }
-          >
-            {adminRoutes}
-          </Route>
-
-          <Route path="/login" element={<Login />} />
-
-          {/* Catch-All / 404 Route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <ToastContainer
-          position="top-right" // Posisi notifikasi
-          autoClose={3000} // Auto close setelah 3 detik
-          hideProgressBar={false}
-        />
-      </CartProvider>
-    </BrowserRouter>
-  );
-}
 
 export default App;

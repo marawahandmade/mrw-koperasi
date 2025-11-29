@@ -1,25 +1,31 @@
-// hooks/useAccessControl.js
-import { useAuth } from '../context/AuthContext'; 
+// src/hooks/useAccessControl.js
+import { useAuth } from '../context/AuthContext.jsx'; 
 
-/**
- * Custom Hook untuk memeriksa apakah pengguna memiliki izin tertentu.
- * @returns {function(string): boolean} Fungsi canAccess(requiredPermission)
- */
 export const useAccessControl = () => {
-    const { userPermissions } = useAuth();
+    const { permissions, isLoggedIn } = useAuth(); 
 
-    /**
-     * @param {string} requiredPermission - Izin yang dibutuhkan (misalnya 'read-member')
-     * @returns {boolean} True jika pengguna memiliki izin tersebut.
-     */
     const canAccess = (requiredPermission) => {
+        // 1. Jika tidak ada izin yang dibutuhkan (misalnya Dashboard), selalu True
         if (!requiredPermission) {
-            // Jika tidak ada izin yang diminta, anggap bisa diakses (misalnya menu Home)
             return true;
         }
+
+        // 2. Jika user belum login, pasti False
+        if (!isLoggedIn) {
+            return false;
+        }
         
-        // Cek apakah izin yang diminta ada dalam daftar izin efektif pengguna
-        return userPermissions.includes(requiredPermission);
+        // 👇 PERBAIKAN KRITIS DI SINI (Sebelum memanggil .includes())
+        // Memastikan permissions adalah array yang valid. Jika tidak, anggap tidak ada akses.
+        if (!permissions || !Array.isArray(permissions)) {
+            // Ini akan menangani kasus di mana permissions masih undefined/null saat render pertama
+            return false;
+        }
+        // 👆 PERBAIKAN KRITIS SELESAI
+        
+        // 3. Cek apakah izin ada di daftar permissions user
+        // Line ini sekarang aman karena permissions sudah dipastikan Array.
+        return permissions.includes(requiredPermission); // <-- LINE 22 (atau sekitar sini)
     };
 
     return { canAccess };

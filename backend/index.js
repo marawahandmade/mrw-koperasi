@@ -1,50 +1,43 @@
-const express = require("express");
-const { checkDatabaseConnection } = require("./utils/db_checker");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const path = require("path");
-dotenv.config();
+// index.js (atau server.js/app.js)
 
-// Impor modul routes
-const authRoutes = require("./modules/Auth/routes");
-const userRoutes = require("./modules/User/routes");
-const { rmSync } = require("fs");
+require('dotenv').config();
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const port = process.env.PORT || 5001;
 
-const startServer = async () => {
-  // 1. Cek Koneksi MySQL
-  const isDbConnected = await checkDatabaseConnection();
+// --- 1. Konfigurasi Sequelize ---
+const db = require('./models');
 
-  if (!isDbConnected) {
-    // Jika koneksi gagal, keluar dari proses Node.js
-    process.exit(1);
-  }
+// Gunakan sync() hanya untuk pengembangan. Di produksi, gunakan migrasi.
+db.sequelize.sync() 
+    .then(() => {
+        console.log("Database terkoneksi. Model disinkronkan.");
+    })
+    .catch((err) => {
+        console.error("Gagal terkoneksi ke database:", err.message);
+    });
 
-  // --- MIDDLEWARE GLOBAL (STANDARD & AMAN) ---
-  // 1. CORS
-  app.use(cors());
+// --- 2. Middleware Dasar Express ---
+app.use(cors()); // Izinkan permintaan lintas domain (penting untuk ReactJS)
+app.use(bodyParser.json()); // Parsing JSON dari body request
+app.use(bodyParser.urlencoded({ extended: true }));
 
-  // 2. Body Parsers (Pasang secara Global)
-  // express.json() akan mengabaikan multipart/form-data, jadi aman untuk Multer.
-  // Ini memastikan req.body selalu terinisialisasi (minimal object kosong {}), tidak pernah undefined.
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// --- 3. Pemuatan Routes ---
+// Import routes auth Anda
+const authRoutes = require('./routes/auth.routes'); 
 
-  // 3. Static Files
-  app.use("/images", express.static(path.join(__dirname, "public", "images")));
+// Terapkan routes Anda dengan prefix API
+app.use('/api/auth', authRoutes);
 
-  // --- ROUTE REGISTRATION ---
-  app.use("/api/auth", authRoutes);
-  app.use("/api/users", userRoutes);
+// Contoh Route Lain:
+// const pinjamanRoutes = require('./routes/pinjaman.routes');
+// app.use('/api/pinjaman', pinjamanRoutes);
 
-  app.get("/", (req, res) => {
-    res.send("Modular Apps API is running!");
-  });
-  app.listen(PORT, () => {
-    console.log(`\n🌐 Server backend berjalan di port ${PORT}`);
-  });
-};
 
-startServer();
+// --- 4. Server Listener ---
+app.listen(port, () => {
+    console.log(`Server berjalan di port ${port}`);
+});
